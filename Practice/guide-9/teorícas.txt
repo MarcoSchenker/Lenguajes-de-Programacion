@@ -1,0 +1,152 @@
+5) En Haskell las funciones son curried:
+max :: Ord a => a -> a -> a significa que max
+toma un argumento y devuelve una función que toma el siguiente argumento.
+La aplicación de funciones es asociativa a la izquierda, 
+así max 4 5 se interpreta como (max 4) 5.
+(max 4) es una aplicación parcial que produce
+una función \y -> max 4 y. 
+Luego aplicar 5 a esa función da el mismo resultado.
+
+6) Funciones de orden superior:
+Son funciones que reciben otras funciones como parámetros
+y/o devuelven funciones como resultado. 
+Permiten abstraer comportamiento. 
+Ejemplos comunes: map, filter, foldl.
+
+7) Verdadero. 
+En Haskell las funciones son curried: un tipo como 
+a -> b -> c se interpreta como a -> (b -> c), es decir, 
+toma un primer argumento y devuelve una función que toma el siguiente.
+Por eso max 4 5 se parsea como (max 4) 5
+y la aplicación parcial (max 4) es una función.
+
+10) Son equivalentes porque (+1) es una section que 
+crea una función que suma 1 a su argumento;
+es la misma función que la lambda \x -> x + 1.
+En otras palabras: (+1) ≡ \x -> x + 1,
+luego map (+1) [7,3,5,1] produce los mismos valores que
+map (\x -> x + 1) [7,3,5,1].
+Prefiero (+1) cuando la operación es simple: es más corto e idiomático.
+No hay diferencia de rendimiento significativa;
+es cuestión de estilo y legibilidad.
+
+foldl  :: (b -> a -> b) -> b -> [a] -> b
+foldr  :: (a -> b -> b) -> b -> [a] -> b
+
+foldl f z [x1,x2,x3] = f (f (f z x1) x2) x3
+foldr f z [x1,x2,x3] = f x1 (f x2 (f x3 z))
+Diferencias importantes (resumen):
+
+Orden de asociación: foldl asocia a la izquierda, foldr a la derecha.
+Laziness / infinitas: foldr puede sintetizar resultados
+sobre listas infinitas si la función f puede decidir sin evaluar
+toda la cola; foldl no (consume la lista).
+
+mapR :: (a -> b) -> [a] -> [b]
+mapR f = foldr (\x acc -> f x : acc) []
+
+Haskell gestiona memoria automáticamente con un Garbage Collector (GC).
+Programas asignan en el heap; el GC libera lo inalcanzable.
+
+Datos en Haskell son closures (valores + código).
+Las expresiones no evaluadas son thunks (deben evaluarse para liberar memoria).
+Hay stack (call frames/retornos) y heap (closures, listas, datos). 
+El RTS (runtime) gestiona ambos y hace GC generacional.
+"Memoria dinámica" sigue existiendo: cada asignación crea objetos en el heap;
+el GC los recoge luego.
+
+class (type class en realidad) es como una interfaz
+Se define así: 
+
+class Shape a where
+    area :: a -> Double
+
+data es como una clase, y cuando se pone:
+instance interfaz clase where, significa que implementa la interfaz
+después del where van las funciones de la interfaz
+con adentro el tipo de la clase
+
+data Circle = Circle Double
+instance Shape Circle where
+  area (Circle r) = pi * r * r
+
+
+
+Haskell can **automatically generate** instances for some common classes.
+
+data Point = Point Int Int
+  deriving (Eq, Show)
+
+This adds:
+(==) :: Point -> Point -> Bool
+show :: Point -> String
+
+Where the derived default implementations are:
+(==) (Point x1 y1) (Point x2 y2) = x1 == x2 && y1 == y2
+show (Point x y) = "Point " ++ x1 ++ " " ++ y
+
+Es decir, si se le pone deriving, es como que lo implementa
+y por defecto tiene esas funciones.
+
+Otro ejemplo:
+data Student = Student
+  { idNumber :: Int
+  , name     :: String
+  } deriving (Show, Eq)
+
+moe :: Student
+moe = Student { idNumber = 1, name = "Moe" }
+
+newtype Stack a = Stack [a]
+  deriving (Show, Eq)
+
+wordFreq :: String -> [(String, Int)]
+wordFreq = map (\g -> (head g, length g)) . group . sort . words
+
+(f . g) x = f (g x).
+La composición aplica las funciones de derecha a izquierda: 
+s -> words s -> sort (words s) -> group (sort (words s)) -> map ... (group ...).
+
+A **module** is a collection of related definitions:
+- Functions, types, and type classes.
+- Usually stored in a separate file.
+- Each file defines one module.
+
+let prices = Map.fromList [("Apples", 2.5), ("Oranges", 3.0)]
+Map.lookup "Apples" prices     -- Just 2.5
+Map.lookup "Bananas" prices    -- Nothing
+
+let newPrices = Map.insert "Bananas" 4.0 prices
+
+| Function | Description | Example |
+|-----------|--------------|----------|
+| `Map.fromList` | Build a map from a list of pairs | `Map.fromList [("a",1)]` |
+| `Map.lookup` | Find a value by key | `Map.lookup "a" m` |
+| `Map.insert` | Add a new key-value pair | `Map.insert "b" 2 m` |
+| `Map.delete` | Remove a key | `Map.delete "a" m` |
+| `Map.keys` / `Map.elems` | Get all keys or values | `Map.keys m` |
+| `Map.empty` | `Map.empty` | `fromList []` |
+| `Map.member` | `Map.member 3 (Map.fromList [(3,6)])` | `True` |
+
+`fromListWith` lets you decide how to handle duplicates.
+
+phoneBookToMap :: (Ord k) => [(k,String)] -> Map.Map k String
+phoneBookToMap xs =
+  Map.fromListWith (\n1 n2 -> n1 ++ ", " ++ n2) xs
+
+- `insertWith` — insert or combine with an existing key
+- `fromListWith (+)` — sum values with the same key
+
+fromListWith me genera un map con la lista de tuplas,
+cuando aparecen claves duplicadas se combinan
+usando la misma función f con el mismo orden 
+
+wordCount :: String -> Map.Map String Int
+wordCount text =
+  foldl addWord Map.empty (words text)
+  where
+    addWord m w = Map.insertWith (+) w 1 m
+
+wordCount "Haskell is fun and Haskell is powerful"
+Result:
+fromList [("and",1),("fun",1),("haskell",2),("is",2),("powerful",1)]
